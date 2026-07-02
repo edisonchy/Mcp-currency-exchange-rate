@@ -34,6 +34,35 @@ const BatchConvertInputSchema = z.object({
     .describe("Conversions to run. Each pair has a target currency and amount."),
 });
 
+const ApiResponseSchema = z.record(z.string(), z.unknown()).nullable();
+
+const ConversionSchema = z.object({
+  from: CurrencyCodeSchema,
+  to: CurrencyCodeSchema,
+  amount: z.number(),
+  rate: z.number(),
+  converted: z.number(),
+  derived: z.boolean().nullable(),
+  derivation_bps_max: z.number().nullable(),
+  source: z.string().nullable(),
+  sources: z.record(z.string(), z.string()).nullable(),
+  market_session: z.string().nullable(),
+  timestamp: z.string().nullable(),
+  data_updated_at: z.string().nullable(),
+  notice: z.string().nullable(),
+});
+
+const SingleConvertOutputSchema = z.object({
+  conversion: ConversionSchema,
+  apiResponse: ApiResponseSchema,
+});
+
+const BatchConvertOutputSchema = z.object({
+  from: CurrencyCodeSchema,
+  conversions: z.array(ConversionSchema),
+  apiResponse: ApiResponseSchema,
+});
+
 export function registerConversionTools(server) {
   server.registerTool(
     "convert_currency",
@@ -42,6 +71,7 @@ export function registerConversionTools(server) {
       description:
         "Convert one currency amount. If source currency is omitted, GBP is used by default.",
       inputSchema: SingleConvertInputSchema,
+      outputSchema: SingleConvertOutputSchema,
       annotations: { readOnlyHint: true },
     },
     async ({ amount, to, from }) => {
@@ -73,6 +103,7 @@ export function registerConversionTools(server) {
       description:
         "Convert multiple currency amounts from one source currency. If source currency is omitted, GBP is used by default.",
       inputSchema: BatchConvertInputSchema,
+      outputSchema: BatchConvertOutputSchema,
       annotations: { readOnlyHint: true },
     },
     async ({ from, pairs }) => {
@@ -214,7 +245,9 @@ function normalizeConversion(conversion, response, request) {
     converted,
     derived: conversion.derived ?? response.derived ?? null,
     derivation_bps_max:
-      conversion.derivation_bps_max ?? response.derivation_bps_max ?? null,
+      toFiniteNumber(conversion.derivation_bps_max) ??
+      toFiniteNumber(response.derivation_bps_max) ??
+      null,
     source: conversion.source ?? response.source ?? null,
     sources: conversion.sources ?? response.sources ?? null,
     market_session: conversion.market_session ?? response.market_session ?? null,

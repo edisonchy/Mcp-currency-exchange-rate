@@ -5,7 +5,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { createServer } from "./index.js";
 
 const HOST = "0.0.0.0";
-const PORT = parsePort(process.env.PORT ?? "3000");
+const PORT = parsePort(process.env.PORT ?? "65535");
 const MCP_PATH = "/mcp";
 
 const app = express();

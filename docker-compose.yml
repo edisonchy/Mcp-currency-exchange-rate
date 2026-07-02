@@ -5,9 +5,9 @@ services:
     env_file:
       - .env
     environment:
-      PORT: 3000
+      PORT: 65535
     ports:
-      - "127.0.0.1:${HOST_PORT:-3000}:3000"
+      - "127.0.0.1:${HOST_PORT:-65535}:65535"
 
   cloudflared:
     image: cloudflare/cloudflared:latest
@@ -19,7 +19,7 @@ services:
       - tunnel
       - --no-autoupdate
       - --url
-      - http://mcp:3000
+      - http://mcp:65535
 
   cloudflared-production:
     image: cloudflare/cloudflared:latest
