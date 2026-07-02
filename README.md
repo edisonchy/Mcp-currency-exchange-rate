@@ -1,11 +1,8 @@
 # Exchange Rate MCP Server
 
-An HTTP-only Model Context Protocol (MCP) server that lets LLMs such as ChatGPT access live currency exchange rates.
-
+A Model Context Protocol (MCP) server that lets LLMs such as ChatGPT access live currency exchange rates.
 
 https://github.com/user-attachments/assets/33b9ee21-c7a4-4947-a5b7-42e9ca1ab74f
-
-
 
 ## Project Aim
 
@@ -22,6 +19,7 @@ MCP is the current standard for enabling LLMs and AI agents to interact with bac
 ## Features
 
 - Supports single currency conversions (`convert_currency`) and batch conversions (`convert_currencies`).
+- Provides an HTTP MCP endpoint served through a Node.js Express server.
 - Runs in Docker with Cloudflare quick tunnel for public HTTPS access.
 
 ## Environment Setup
