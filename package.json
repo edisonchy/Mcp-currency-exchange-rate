@@ -1,0 +1,28 @@
+{
+  "name": "exchange-rate-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for ExchangeRate.dev currency conversion.",
+  "main": "src/index.js",
+  "bin": {
+    "exchange-rate-mcp": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "start:stdio": "node --env-file=.env src/index.js",
+    "start:http": "node --env-file=.env src/server.js",
+    "start:http:prod": "node src/server.js",
+    "docker:build": "docker build -t exchange-rate-mcp .",
+    "docker:dev": "docker compose --profile tunnel up --build",
+    "docker:prod": "docker compose --profile production up --build",
+    "test": "find src -name '*.js' -print0 | xargs -0 -n1 node --check"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "express": "^5.2.1",
+    "zod": "^4.4.3"
+  }
+}

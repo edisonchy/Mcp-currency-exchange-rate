@@ -1,0 +1,35 @@
+services:
+  mcp:
+    build: .
+    image: exchange-rate-mcp
+    env_file:
+      - .env
+    environment:
+      PORT: 3000
+    ports:
+      - "127.0.0.1:${HOST_PORT:-3000}:3000"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles:
+      - tunnel
+    depends_on:
+      - mcp
+    command:
+      - tunnel
+      - --no-autoupdate
+      - --url
+      - http://mcp:3000
+
+  cloudflared-production:
+    image: cloudflare/cloudflared:latest
+    profiles:
+      - production
+    depends_on:
+      - mcp
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token
+      - ${CLOUDFLARED_TUNNEL_TOKEN:-}
