@@ -5,26 +5,12 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { createServer } from "./index.js";
 
 const HOST = "0.0.0.0";
-const PORT = parsePort(process.env.PORT ?? "65535");
+const PORT = 65535;
 const MCP_PATH = "/mcp";
 
 const app = express();
 
-function parsePort(value) {
-  if (!/^\d+$/.test(value)) {
-    throw new Error("PORT must be an integer between 1 and 65535.");
-  }
-
-  const port = Number(value);
-
-  if (port < 1 || port > 65535) {
-    throw new Error("PORT must be an integer between 1 and 65535.");
-  }
-
-  return port;
-}
-
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json());
 
 app.options(MCP_PATH, (_req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -43,10 +29,6 @@ app.get("/", (_req, res) => {
     status: "ok",
     mcpPath: MCP_PATH,
   });
-});
-
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
 });
 
 app.all(MCP_PATH, async (req, res) => {

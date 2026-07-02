@@ -5,11 +5,8 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node --env-file=.env src/server.js",
-    "start:http": "node --env-file=.env src/server.js",
-    "start:http:prod": "node src/server.js",
     "docker:build": "docker build -t exchange-rate-mcp .",
-    "docker:dev": "docker compose --profile tunnel up --build",
-    "docker:prod": "docker compose --profile production up --build",
+    "docker": "docker compose up --build",
     "test": "find src -name '*.js' -print0 | xargs -0 -n1 node --check"
   },
   "keywords": [],
