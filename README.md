@@ -22,6 +22,12 @@ MCP is the current standard for enabling LLMs and AI agents to interact with bac
 - Provides an HTTP MCP endpoint served through a Node.js Express server.
 - Runs in Docker with Cloudflare quick tunnel for public HTTPS access.
 
+## Prerequisites
+
+Make sure Docker is installed and running on your system. Refer to the official Docker documentation for installation instructions:
+
+https://docs.docker.com/
+
 ## Environment Setup
 
 Create a local `.env` file:
@@ -30,17 +36,15 @@ Create a local `.env` file:
 cp .env.example .env
 ```
 
+Get an ExchangeRate.dev API key:
+
+https://exchangerate.dev/signup
+
 Then set your API key:
 
 ```env
 EXCHANGE_RATE_API_KEY=your_api_key_here
 ```
-
-## Prerequisites
-
-Make sure Docker is installed and running on your system. Refer to the official Docker documentation for installation instructions:
-
-https://docs.docker.com/
 
 ## Run With Docker
 
