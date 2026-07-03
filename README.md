@@ -100,7 +100,6 @@ src/
   index.ts              # MCP server
   conversion.ts         # MCP tools
   exchange-rate-api.ts  # ExchangeRate.dev client
-  tool-result.ts        # Tool responses
   validation.ts         # Input validation
 
 tests/

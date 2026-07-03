@@ -3,6 +3,7 @@
 import express from "express";
 import type { Request, Response } from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { createServer } from "./index.js";
 
 type EmptyParams = Record<string, never>;
@@ -55,7 +56,6 @@ app.all(
   ): Promise<void> => {
     const server = createServer();
     const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
       enableJsonResponse: true,
     });
 
@@ -67,7 +67,7 @@ app.all(
     });
 
     try {
-      await server.connect(transport);
+      await server.connect(transport as Transport);
       await transport.handleRequest(req, res, req.body);
     } catch (error) {
       console.error(error);

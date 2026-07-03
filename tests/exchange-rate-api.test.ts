@@ -1,14 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  normalizeCurrencyCode,
-  requestExchangeRate,
-  toFiniteNumber,
-} from "../src/exchange-rate-api.js";
-
-test("normalizeCurrencyCode trims and uppercases currency codes", () => {
-  assert.equal(normalizeCurrencyCode(" usd "), "USD");
-});
+import { requestExchangeRate, toFiniteNumber } from "../src/exchange-rate-api.js";
 
 test("toFiniteNumber accepts finite numbers and numeric strings", () => {
   assert.equal(toFiniteNumber(12.5), 12.5);

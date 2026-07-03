@@ -1,5 +1,4 @@
-const API_BASE_URL: string =
-  process.env.EXCHANGERATE_API_BASE_URL ?? "https://api.exchangerate.dev";
+const API_BASE_URL: string = "https://api.exchangerate.dev";
 
 export type JsonObject = Record<string, unknown>;
 
@@ -7,10 +6,6 @@ type RequestExchangeRateOptions = {
   method?: string;
   body?: unknown;
 };
-
-export function normalizeCurrencyCode(value: string): string {
-  return value.trim().toUpperCase();
-}
 
 export function toFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -32,15 +27,21 @@ export async function requestExchangeRate(
   path: string,
   options: RequestExchangeRateOptions = {},
 ): Promise<JsonObject> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    Authorization: `Bearer ${getApiKey()}`,
+  };
+  const requestInit: RequestInit = {
     method: options.method ?? "GET",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${getApiKey()}`,
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-    },
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
+    headers,
+  };
+
+  if (options.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    requestInit.body = JSON.stringify(options.body);
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, requestInit);
 
   const text = await response.text();
   let data: unknown;
@@ -78,7 +79,8 @@ export async function requestExchangeRate(
 
 function getApiKey(): string {
   const apiKey =
-    process.env.EXCHANGERATE_API_KEY ?? process.env.EXCHANGE_RATE_API_KEY;
+    process.env.EXCHANGERATE_API_KEY?.trim() ||
+    process.env.EXCHANGE_RATE_API_KEY?.trim();
 
   if (!apiKey) {
     throw new Error(

@@ -168,12 +168,84 @@ test("convert_currencies preserves pair order and skips API calls for identities
       pairs: [["USD", 10]],
     });
     assert.equal(conversions.length, 2);
-    assert.equal(conversions[0].to, "GBP");
-    assert.equal(conversions[0].converted, 5);
-    assert.equal(conversions[0].source, "identity");
-    assert.equal(conversions[1].to, "USD");
-    assert.equal(conversions[1].converted, 13);
-    assert.equal(conversions[1].rate, 1.3);
+    const identityConversion = conversions[0];
+    const usdConversion = conversions[1];
+
+    assert.ok(identityConversion);
+    assert.ok(usdConversion);
+    assert.equal(identityConversion.to, "GBP");
+    assert.equal(identityConversion.converted, 5);
+    assert.equal(identityConversion.source, "identity");
+    assert.equal(usdConversion.to, "USD");
+    assert.equal(usdConversion.converted, 13);
+    assert.equal(usdConversion.rate, 1.3);
+  } finally {
+    await close();
+  }
+});
+
+test("convert_currencies matches reordered API conversions by target currency", async (t) => {
+  const originalFetch = globalThis.fetch;
+  const originalApiKey = process.env.EXCHANGE_RATE_API_KEY;
+  const { client, close } = await connectTestClient();
+
+  process.env.EXCHANGE_RATE_API_KEY = "test-api-key";
+
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    restoreEnv("EXCHANGE_RATE_API_KEY", originalApiKey);
+  });
+
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        conversions: [
+          {
+            to: "EUR",
+            amount: 10,
+            converted: 11,
+            rate: 1.1,
+          },
+          {
+            to: "USD",
+            amount: 10,
+            converted: 13,
+            rate: 1.3,
+          },
+        ],
+      }),
+      {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      },
+    );
+
+  try {
+    const result = await client.callTool({
+      name: "convert_currencies",
+      arguments: {
+        from: "gbp",
+        pairs: [
+          { to: "usd", amount: 10 },
+          { to: "eur", amount: 10 },
+        ],
+      },
+    });
+
+    const structuredContent = requireRecord(result.structuredContent);
+    const conversions = requireArray(structuredContent.conversions).map(
+      requireRecord,
+    );
+    const usdConversion = conversions[0];
+    const eurConversion = conversions[1];
+
+    assert.equal(result.isError, undefined);
+    assert.ok(usdConversion);
+    assert.ok(eurConversion);
+    assert.equal(usdConversion.to, "USD");
+    assert.equal(usdConversion.converted, 13);
+    assert.equal(eurConversion.to, "EUR");
+    assert.equal(eurConversion.converted, 11);
   } finally {
     await close();
   }

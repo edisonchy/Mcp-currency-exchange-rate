@@ -1,15 +1,15 @@
 {
   "name": "exchange-rate-mcp",
   "version": "1.0.0",
-  "description": "MCP server for ExchangeRate.dev currency conversion.",
-  "main": "src/server.ts",
+  "description": "MCP server for currency conversion.",
+  "private": true,
   "scripts": {
     "start": "node --env-file=.env --import tsx src/server.ts",
     "docker:build": "docker build -t exchange-rate-mcp .",
     "docker": "docker compose up -d",
     "typecheck": "tsc --noEmit",
     "test": "npm run typecheck && npm run test:unit",
-    "test:unit": "node --import tsx --test test/*.test.ts"
+    "test:unit": "node --import tsx --test tests/*.test.ts"
   },
   "keywords": [],
   "author": "",

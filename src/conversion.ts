@@ -3,12 +3,10 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import {
   type JsonObject,
-  normalizeCurrencyCode,
   requestExchangeRate,
   toFiniteNumber,
 } from "./exchange-rate-api.js";
 import { AmountSchema, CurrencyCodeSchema } from "./validation.js";
-import { toolError } from "./tool-result.js";
 
 const DEFAULT_FROM_CURRENCY = "GBP";
 const MAX_BATCH_PAIRS = 10;
@@ -94,24 +92,20 @@ export function registerConversionTools(server: McpServer): void {
       annotations: { readOnlyHint: true },
     },
     async ({ amount, to, from }): Promise<CallToolResult> => {
-      try {
-        const request = {
-          amount,
-          from: normalizeCurrencyCode(from),
-          to: normalizeCurrencyCode(to),
-        };
-        const { conversion, apiResponse } = await convertSingle(request);
+      const request = {
+        amount,
+        from,
+        to,
+      };
+      const { conversion, apiResponse } = await convertSingle(request);
 
-        return {
-          content: [{ type: "text", text: formatConversion(conversion) }],
-          structuredContent: {
-            conversion,
-            apiResponse,
-          },
-        };
-      } catch (error) {
-        return toolError(error);
-      }
+      return {
+        content: [{ type: "text", text: formatConversion(conversion) }],
+        structuredContent: {
+          conversion,
+          apiResponse,
+        },
+      };
     },
   );
 
@@ -126,32 +120,28 @@ export function registerConversionTools(server: McpServer): void {
       annotations: { readOnlyHint: true },
     },
     async ({ from, pairs }): Promise<CallToolResult> => {
-      try {
-        const request = {
-          from: normalizeCurrencyCode(from),
-          pairs: pairs.map((pair) => ({
-            amount: pair.amount,
-            to: normalizeCurrencyCode(pair.to),
-          })),
-        };
-        const { conversions, apiResponse } = await convertBatch(request);
+      const request = {
+        from,
+        pairs: pairs.map((pair) => ({
+          amount: pair.amount,
+          to: pair.to,
+        })),
+      };
+      const { conversions, apiResponse } = await convertBatch(request);
 
-        return {
-          content: [
-            {
-              type: "text",
-              text: conversions.map(formatConversion).join("\n"),
-            },
-          ],
-          structuredContent: {
-            from: request.from,
-            conversions,
-            apiResponse,
+      return {
+        content: [
+          {
+            type: "text",
+            text: conversions.map(formatConversion).join("\n"),
           },
-        };
-      } catch (error) {
-        return toolError(error);
-      }
+        ],
+        structuredContent: {
+          from: request.from,
+          conversions,
+          apiResponse,
+        },
+      };
     },
   );
 }
@@ -218,10 +208,16 @@ async function convertBatch({ from, pairs }: BatchRequest): Promise<{
           isJsonObject(conversion) ? conversion : {},
         )
       : [apiResponse];
+    const remainingApiConversions = [...apiConversions];
 
-    for (const [apiIndex, pair] of apiPairs.entries()) {
+    for (const pair of apiPairs) {
+      const apiConversion = takeApiConversionForPair(
+        remainingApiConversions,
+        pair,
+      );
+
       conversions[pair.index] = normalizeConversion(
-        apiConversions[apiIndex] ?? {},
+        apiConversion,
         apiResponse,
         {
           from,
@@ -273,10 +269,10 @@ function normalizeConversion(
   }
 
   return {
-    from: normalizeCurrencyCode(
+    from: currencyCodeValue(
       stringValue(conversion.from) ?? stringValue(response.from) ?? request.from,
     ),
-    to: normalizeCurrencyCode(
+    to: currencyCodeValue(
       stringValue(conversion.to) ?? stringValue(response.to) ?? request.to,
     ),
     amount,
@@ -321,6 +317,58 @@ function formatNumber(value: number): string {
 
 function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function takeApiConversionForPair(
+  remainingApiConversions: JsonObject[],
+  pair: IndexedBatchPair,
+): JsonObject {
+  const matchingIndex = remainingApiConversions.findIndex((conversion) =>
+    conversionMatchesPair(conversion, pair),
+  );
+
+  if (matchingIndex >= 0) {
+    return remainingApiConversions.splice(matchingIndex, 1)[0] ?? {};
+  }
+
+  const nextConversion = remainingApiConversions.shift();
+
+  if (!nextConversion) {
+    throw new Error("ExchangeRate.dev returned fewer conversions than requested.");
+  }
+
+  const targetCurrency = optionalCurrencyCode(nextConversion.to);
+
+  if (targetCurrency && targetCurrency !== pair.to) {
+    throw new Error("ExchangeRate.dev returned conversions that could not be matched.");
+  }
+
+  return nextConversion;
+}
+
+function conversionMatchesPair(
+  conversion: JsonObject,
+  pair: IndexedBatchPair,
+): boolean {
+  const targetCurrency = optionalCurrencyCode(conversion.to);
+
+  if (!targetCurrency || targetCurrency !== pair.to) {
+    return false;
+  }
+
+  const amount = toFiniteNumber(conversion.amount);
+
+  return amount === undefined || amount === pair.amount;
+}
+
+function currencyCodeValue(value: string): string {
+  return CurrencyCodeSchema.parse(value);
+}
+
+function optionalCurrencyCode(value: unknown): string | undefined {
+  const parsed = CurrencyCodeSchema.safeParse(value);
+
+  return parsed.success ? parsed.data : undefined;
 }
 
 function stringValue(value: unknown): string | undefined {
