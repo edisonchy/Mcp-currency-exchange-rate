@@ -22,6 +22,13 @@ MCP is the current standard for enabling LLMs and AI agents to interact with bac
 - Provides an HTTP MCP endpoint served through a Node.js Express server.
 - Runs in Docker with Cloudflare quick tunnel for public HTTPS access.
 
+## Stack
+
+- MCP TypeScript SDK
+- Express
+- Docker
+- Cloudflare
+
 ## Prerequisites
 
 Make sure Docker is installed and running on your system. Refer to the official Docker documentation for installation instructions:
@@ -100,10 +107,3 @@ tests/
   exchange-rate-api.test.ts
   mcp-server.test.ts
 ```
-
-## Stack
-
-- MCP TypeScript SDK
-- Express
-- Docker
-- Cloudflare
