@@ -89,14 +89,21 @@ npm test           # Type-check and run unit tests
 
 ```text
 src/
-  server.ts             # Express HTTP server and MCP transport
-  index.ts              # MCP server creation
-  conversion.ts         # MCP tool registration
-  exchange-rate-api.ts  # ExchangeRate.dev API client
-  tool-result.ts        # Tool response helpers
-  validation.ts         # Input validation helpers
+  server.ts             # HTTP server
+  index.ts              # MCP server
+  conversion.ts         # MCP tools
+  exchange-rate-api.ts  # ExchangeRate.dev client
+  tool-result.ts        # Tool responses
+  validation.ts         # Input validation
 
-test/
+tests/
   exchange-rate-api.test.ts
   mcp-server.test.ts
 ```
+
+## Stack
+
+- MCP TypeScript SDK
+- Express
+- Docker
+- Cloudflare
