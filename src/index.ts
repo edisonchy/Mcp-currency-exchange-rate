@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerConversionTools } from "./conversion.js";
 
-export function createServer() {
+export function createServer(): McpServer {
   const server = new McpServer(
     {
       name: "exchange-rate-mcp",

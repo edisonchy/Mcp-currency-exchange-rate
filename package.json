@@ -2,12 +2,14 @@
   "name": "exchange-rate-mcp",
   "version": "1.0.0",
   "description": "MCP server for ExchangeRate.dev currency conversion.",
-  "main": "src/server.js",
+  "main": "src/server.ts",
   "scripts": {
-    "start": "node --env-file=.env src/server.js",
+    "start": "node --env-file=.env --import tsx src/server.ts",
     "docker:build": "docker build -t exchange-rate-mcp .",
     "docker": "docker compose up --build",
-    "test": "find src -name '*.js' -print0 | xargs -0 -n1 node --check"
+    "typecheck": "tsc --noEmit",
+    "test": "npm run typecheck && npm run test:unit",
+    "test:unit": "node --import tsx --test test/*.test.ts"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +18,12 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "express": "^5.2.1",
+    "tsx": "^4.22.5",
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.1.0",
+    "typescript": "^6.0.3"
   }
 }

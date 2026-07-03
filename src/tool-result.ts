@@ -1,4 +1,6 @@
-export function toolError(error) {
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+
+export function toolError(error: unknown): CallToolResult {
   return {
     isError: true,
     content: [

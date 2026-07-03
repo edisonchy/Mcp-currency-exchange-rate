@@ -1,5 +1,8 @@
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import {
+  type JsonObject,
   normalizeCurrencyCode,
   requestExchangeRate,
   toFiniteNumber,
@@ -63,7 +66,23 @@ const BatchConvertOutputSchema = z.object({
   apiResponse: ApiResponseSchema,
 });
 
-export function registerConversionTools(server) {
+type Conversion = z.infer<typeof ConversionSchema>;
+type BatchConvertInput = z.infer<typeof BatchConvertInputSchema>;
+type BatchPair = BatchConvertInput["pairs"][number];
+type ConversionRequest = {
+  from: string;
+  to: string;
+  amount: number;
+};
+type BatchRequest = {
+  from: string;
+  pairs: BatchPair[];
+};
+type IndexedBatchPair = BatchPair & {
+  index: number;
+};
+
+export function registerConversionTools(server: McpServer): void {
   server.registerTool(
     "convert_currency",
     {
@@ -74,7 +93,7 @@ export function registerConversionTools(server) {
       outputSchema: SingleConvertOutputSchema,
       annotations: { readOnlyHint: true },
     },
-    async ({ amount, to, from }) => {
+    async ({ amount, to, from }): Promise<CallToolResult> => {
       try {
         const request = {
           amount,
@@ -106,7 +125,7 @@ export function registerConversionTools(server) {
       outputSchema: BatchConvertOutputSchema,
       annotations: { readOnlyHint: true },
     },
-    async ({ from, pairs }) => {
+    async ({ from, pairs }): Promise<CallToolResult> => {
       try {
         const request = {
           from: normalizeCurrencyCode(from),
@@ -137,7 +156,10 @@ export function registerConversionTools(server) {
   );
 }
 
-async function convertSingle({ from, to, amount }) {
+async function convertSingle({ from, to, amount }: ConversionRequest): Promise<{
+  conversion: Conversion;
+  apiResponse: JsonObject | null;
+}> {
   if (from === to) {
     return {
       conversion: makeIdentityConversion({ from, to, amount }),
@@ -160,9 +182,12 @@ async function convertSingle({ from, to, amount }) {
   return { conversion, apiResponse: response };
 }
 
-async function convertBatch({ from, pairs }) {
-  const conversions = new Array(pairs.length);
-  const apiPairs = [];
+async function convertBatch({ from, pairs }: BatchRequest): Promise<{
+  conversions: Conversion[];
+  apiResponse: JsonObject | null;
+}> {
+  const conversions = new Array<Conversion>(pairs.length);
+  const apiPairs: IndexedBatchPair[] = [];
 
   for (const [index, pair] of pairs.entries()) {
     if (pair.to === from) {
@@ -177,7 +202,7 @@ async function convertBatch({ from, pairs }) {
     apiPairs.push({ index, ...pair });
   }
 
-  let apiResponse = null;
+  let apiResponse: JsonObject | null = null;
 
   if (apiPairs.length > 0) {
     apiResponse = await requestExchangeRate("/v1/convert", {
@@ -189,7 +214,9 @@ async function convertBatch({ from, pairs }) {
     });
 
     const apiConversions = Array.isArray(apiResponse.conversions)
-      ? apiResponse.conversions
+      ? apiResponse.conversions.map((conversion) =>
+          isJsonObject(conversion) ? conversion : {},
+        )
       : [apiResponse];
 
     for (const [apiIndex, pair] of apiPairs.entries()) {
@@ -208,7 +235,11 @@ async function convertBatch({ from, pairs }) {
   return { conversions, apiResponse };
 }
 
-function makeIdentityConversion({ from, to, amount }) {
+function makeIdentityConversion({
+  from,
+  to,
+  amount,
+}: ConversionRequest): Conversion {
   return {
     from,
     to,
@@ -226,7 +257,11 @@ function makeIdentityConversion({ from, to, amount }) {
   };
 }
 
-function normalizeConversion(conversion, response, request) {
+function normalizeConversion(
+  conversion: JsonObject,
+  response: JsonObject,
+  request: ConversionRequest,
+): Conversion {
   const amount = toFiniteNumber(conversion.amount) ?? request.amount;
   const converted = toFiniteNumber(conversion.converted);
   const rate =
@@ -238,34 +273,74 @@ function normalizeConversion(conversion, response, request) {
   }
 
   return {
-    from: normalizeCurrencyCode(conversion.from ?? response.from ?? request.from),
-    to: normalizeCurrencyCode(conversion.to ?? response.to ?? request.to),
+    from: normalizeCurrencyCode(
+      stringValue(conversion.from) ?? stringValue(response.from) ?? request.from,
+    ),
+    to: normalizeCurrencyCode(
+      stringValue(conversion.to) ?? stringValue(response.to) ?? request.to,
+    ),
     amount,
     rate,
     converted,
-    derived: conversion.derived ?? response.derived ?? null,
+    derived:
+      booleanValue(conversion.derived) ?? booleanValue(response.derived) ?? null,
     derivation_bps_max:
       toFiniteNumber(conversion.derivation_bps_max) ??
       toFiniteNumber(response.derivation_bps_max) ??
       null,
-    source: conversion.source ?? response.source ?? null,
-    sources: conversion.sources ?? response.sources ?? null,
-    market_session: conversion.market_session ?? response.market_session ?? null,
-    timestamp: conversion.timestamp ?? response.timestamp ?? null,
+    source: stringValue(conversion.source) ?? stringValue(response.source) ?? null,
+    sources:
+      stringRecordValue(conversion.sources) ??
+      stringRecordValue(response.sources) ??
+      null,
+    market_session:
+      stringValue(conversion.market_session) ??
+      stringValue(response.market_session) ??
+      null,
+    timestamp:
+      stringValue(conversion.timestamp) ?? stringValue(response.timestamp) ?? null,
     data_updated_at:
-      conversion.data_updated_at ?? response.data_updated_at ?? null,
-    notice: conversion.notice ?? response.notice ?? null,
+      stringValue(conversion.data_updated_at) ??
+      stringValue(response.data_updated_at) ??
+      null,
+    notice: stringValue(conversion.notice) ?? stringValue(response.notice) ?? null,
   };
 }
 
-function formatConversion(conversion) {
+function formatConversion(conversion: Conversion): string {
   return `${formatNumber(conversion.amount)} ${conversion.from} = ${formatNumber(
     conversion.converted,
   )} ${conversion.to}`;
 }
 
-function formatNumber(value) {
+function formatNumber(value: number): string {
   return new Intl.NumberFormat("en-GB", {
     maximumFractionDigits: 8,
   }).format(value);
+}
+
+function isJsonObject(value: unknown): value is JsonObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function booleanValue(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function stringRecordValue(value: unknown): Record<string, string> | undefined {
+  if (!isJsonObject(value)) {
+    return undefined;
+  }
+
+  const entries = Object.entries(value);
+
+  if (!entries.every(([, entryValue]) => typeof entryValue === "string")) {
+    return undefined;
+  }
+
+  return Object.fromEntries(entries) as Record<string, string>;
 }
